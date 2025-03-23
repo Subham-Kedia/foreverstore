@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 )
@@ -14,7 +15,7 @@ func CASPathTransfomrFunc(key string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashStr := hex.EncodeToString(hash[:])
 
-	blockSize := 5
+	blockSize := 8
 	sliceLen := len(hashStr) / blockSize
 
 	paths := make([]string, sliceLen)
@@ -75,19 +76,37 @@ func (s *Store) writeStream(key string, r io.Reader) error {
 	return nil
 }
 
+func (s *Store) Has(key string) bool {
+	pathkey := s.PathTransform(key)
+
+	_, err := os.Stat(pathkey.FileName())
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func (s *Store) readStream(key string) (io.ReadCloser, error) {
 	pathkey := s.PathTransform(key)
 	return os.Open(pathkey.FileName())
 }
 
 func (s *Store) Read(key string) (io.Reader, error) {
-  f, err := s.readStream(key)
-  if err != nil {
-    return nil, err
-  }
-  defer f.Close()
+	f, err := s.readStream(key)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
 
-  buf := new(bytes.Buffer)
-  _, err = io.Copy(buf, f)
-  return buf, err
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, f)
+	return buf, err
+}
+
+func (s *Store) Delete(key string) error {
+	pathkey := s.PathTransform(key)
+	defer func() {
+		log.Printf("deleted %s from disk", pathkey.Pathname)
+	}()
+	return os.RemoveAll(pathkey.Pathname)
 }
