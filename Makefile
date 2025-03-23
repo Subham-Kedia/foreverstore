@@ -5,4 +5,4 @@ run: build
 	@./bin/fs
 
 test:
-	@go test -v ./... -v
+	@go test ./... -v
