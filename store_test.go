@@ -8,9 +8,15 @@ import (
 )
 
 func TestPathTrasnformFunc(t *testing.T) {
-	key := "random"
-	pathname := CASPathTransfomrFunc(key)
-	fmt.Println(pathname)
+	key1 := "ab"
+	key2 := "abc"
+	key3 := "abcd"
+	pathname1 := CASPathTransfomrFunc(key1)
+	fmt.Println(pathname1)
+	pathname2 := CASPathTransfomrFunc(key2)
+	fmt.Println(pathname2)
+	pathname3 := CASPathTransfomrFunc(key3)
+	fmt.Println(pathname3)
 }
 
 func TestDeleteFile(t *testing.T) {

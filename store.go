@@ -2,55 +2,19 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"strings"
 )
 
-func CASPathTransfomrFunc(key string) PathKey {
-	hash := sha1.Sum([]byte(key))
-	hashStr := hex.EncodeToString(hash[:])
-
-	blockSize := 8
-	sliceLen := len(hashStr) / blockSize
-
-	paths := make([]string, sliceLen)
-	for i := range sliceLen {
-		from, to := i*blockSize, (i*blockSize)+blockSize
-		paths[i] = hashStr[from:to]
-	}
-
-	return PathKey{
-		Pathname: strings.Join(paths, "/"),
-		Original: hashStr,
-	}
-}
-
-type PathTransformFunc func(string) PathKey
-
-type PathKey struct {
-	Pathname string
-	Original string
-}
-
-func (p PathKey) FileName() string {
-	return fmt.Sprintf("%s/%s", p.Pathname, p.Original)
-}
-
 type StoreOpts struct {
+	Root          string
 	PathTransform PathTransformFunc
 }
 
 type Store struct {
 	StoreOpts
-}
-
-var DefaultPathTransformFunc = func(key string) string {
-	return key
 }
 
 func NewStore(opts StoreOpts) *Store {
@@ -59,27 +23,10 @@ func NewStore(opts StoreOpts) *Store {
 	}
 }
 
-func (s *Store) writeStream(key string, r io.Reader) error {
-	pathkey := s.PathTransform(key)
-	if err := os.MkdirAll(pathkey.Pathname, os.ModePerm); err != nil {
-		return err
-	}
-	f, err := os.Create(pathkey.FileName())
-	if err != nil {
-		return err
-	}
-	n, err := io.Copy(f, r)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("wrote %d bytes\n", n)
-	return nil
-}
-
 func (s *Store) Has(key string) bool {
-	pathkey := s.PathTransform(key)
+	fullPath := s.PathTransform(key).FullPath()
 
-	_, err := os.Stat(pathkey.FileName())
+	_, err := os.Stat(fullPath)
 	if err != nil {
 		return false
 	}
@@ -88,7 +35,7 @@ func (s *Store) Has(key string) bool {
 
 func (s *Store) readStream(key string) (io.ReadCloser, error) {
 	pathkey := s.PathTransform(key)
-	return os.Open(pathkey.FileName())
+	return os.Open(pathkey.FullPath())
 }
 
 func (s *Store) Read(key string) (io.Reader, error) {
@@ -103,10 +50,31 @@ func (s *Store) Read(key string) (io.Reader, error) {
 	return buf, err
 }
 
+func (s *Store) writeStream(key string, r io.Reader) error {
+	pathkey := s.PathTransform(key)
+	if err := os.MkdirAll(pathkey.PathName, os.ModePerm); err != nil {
+		return err
+	}
+	f, err := os.Create(pathkey.FullPath())
+	if err != nil {
+		return err
+	}
+	n, err := io.Copy(f, r)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("wrote %d bytes\n", n)
+	return nil
+}
+
 func (s *Store) Delete(key string) error {
 	pathkey := s.PathTransform(key)
 	defer func() {
-		log.Printf("deleted %s from disk", pathkey.Pathname)
+		log.Printf("deleted %s from disk", pathkey.PathName)
 	}()
-	return os.RemoveAll(pathkey.Pathname)
+	return os.RemoveAll(pathkey.PathName)
+}
+
+func (s *Store) Clear() error {
+  return os.RemoveAll(s.Root)
 }
