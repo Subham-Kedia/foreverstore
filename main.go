@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"log"
+	"time"
 
 	"github.com/Subham-Kedia/foreverstore/p2p"
 )
@@ -12,6 +14,7 @@ func makeServer(addr string, nodes ...string) *FileServer {
 		HandshakeFunc: p2p.NOPHandshakeFunc,
 		Decoder:       p2p.NOPDecoder{},
 	}
+	// transport
 	tr := p2p.NewTCPTransport(tcpOpts)
 
 	fileServerOpts := FileServerOpts{
@@ -21,10 +24,10 @@ func makeServer(addr string, nodes ...string) *FileServer {
 		bootstrapNodes:    nodes,
 	}
 
-	s := NewFileServer(fileServerOpts)
-	tr.OnPeer = s.OnPeer
+	server := NewFileServer(fileServerOpts)
+	tr.OnPeer = server.OnPeer
 
-	return s
+	return server
 }
 
 func main() {
@@ -35,5 +38,12 @@ func main() {
 		log.Fatal(server1.Start())
 	}()
 
-	server2.Start()
+	go server2.Start()
+
+	time.Sleep(time.Second * 2)
+
+	data := bytes.NewReader([]byte("this is a test data"))
+	server2.StoreData("file1", data)
+
+  select{}
 }

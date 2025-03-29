@@ -8,7 +8,7 @@ import (
 )
 
 type TCPPeer struct {
-	conn     net.Conn
+	net.Conn
 	outbound bool
 }
 
@@ -28,22 +28,14 @@ type TCPTransport struct {
 	peers map[net.Addr]Peer
 }
 
-func (p *TCPPeer) Close() error {
-	return p.conn.Close()
-}
-
-func (p *TCPPeer) RemoteAddr() net.Addr {
-	return p.conn.RemoteAddr()
-}
-
 func (p *TCPPeer) Send(data []byte) error {
-  _, err := p.conn.Write(data)
-  return err
+	_, err := p.Conn.Write(data)
+	return err
 }
 
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	return &TCPPeer{
-		conn:     conn,
+		Conn:     conn,
 		outbound: outbound, // outbound OR inbound
 	}
 }
@@ -55,6 +47,7 @@ func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	}
 }
 
+// creating a listener
 func (t *TCPTransport) ListenAndAccept() error {
 	var err error
 	t.listener, err = net.Listen("tcp", t.ListenAddr)
@@ -65,6 +58,7 @@ func (t *TCPTransport) ListenAndAccept() error {
 	return nil
 }
 
+// accepting incoming connections in a loop
 func (t *TCPTransport) StartAcceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
@@ -91,7 +85,7 @@ func (t *TCPTransport) HandleConn(conn net.Conn, outbound bool) {
 
 	peer := NewTCPPeer(conn, outbound)
 
-	fmt.Printf("New Incoming connection %v\n", peer.conn.RemoteAddr())
+	fmt.Printf("New Inbound connection %v %v\n", peer.Conn.LocalAddr(), peer.Conn.RemoteAddr())
 
 	if err := t.HandshakeFunc(peer); err != nil {
 		conn.Close()
@@ -128,17 +122,19 @@ func (t *TCPTransport) Consume() <-chan RPC {
 	return t.rpcch
 }
 
+// Close implements the Transport Interface
 func (t *TCPTransport) Close() error {
 	return t.listener.Close()
 }
 
 // Dial implements the Transport Interface
 func (t *TCPTransport) Dial(addr string) error {
-  conn, err := net.Dial("tcp", addr)
-  if err != nil {
-    return err
-  }
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
 
-  go t.HandleConn(conn, true)
-  return nil
+	// outbound connection
+	go t.HandleConn(conn, true)
+	return nil
 }
