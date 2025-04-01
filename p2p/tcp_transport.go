@@ -3,6 +3,7 @@ package p2p
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 )
@@ -54,6 +55,7 @@ func (t *TCPTransport) ListenAndAccept() error {
 	if err != nil {
 		return err
 	}
+	log.Printf("server is listening on %v\n", t.ListenAddr)
 	go t.StartAcceptLoop()
 	return nil
 }
@@ -68,7 +70,7 @@ func (t *TCPTransport) StartAcceptLoop() {
 		if err != nil {
 			fmt.Printf("TCP accept error: %s\n", err)
 		}
-
+		log.Printf("Incoming Request from %v on %v\n", conn.RemoteAddr(), t.ListenAddr)
 		go t.HandleConn(conn, false)
 	}
 }
@@ -84,8 +86,6 @@ func (t *TCPTransport) HandleConn(conn net.Conn, outbound bool) {
 	}()
 
 	peer := NewTCPPeer(conn, outbound)
-
-	fmt.Printf("New Inbound connection %v %v\n", peer.Conn.LocalAddr(), peer.Conn.RemoteAddr())
 
 	if err := t.HandshakeFunc(peer); err != nil {
 		conn.Close()

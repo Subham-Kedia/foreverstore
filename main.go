@@ -14,11 +14,11 @@ func makeServer(addr string, nodes ...string) *FileServer {
 		HandshakeFunc: p2p.NOPHandshakeFunc,
 		Decoder:       p2p.NOPDecoder{},
 	}
-	// transport
+
 	tr := p2p.NewTCPTransport(tcpOpts)
 
 	fileServerOpts := FileServerOpts{
-		StorageRoot:       "foreverstore",
+		StorageRoot:       addr[1:] + "_foreverstore",
 		PathTransformFunc: CASPathTransfomrFunc,
 		Transport:         tr,
 		bootstrapNodes:    nodes,
@@ -45,5 +45,5 @@ func main() {
 	data := bytes.NewReader([]byte("this is a test data"))
 	server2.StoreData("file1", data)
 
-  select{}
+	select {}
 }

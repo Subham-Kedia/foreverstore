@@ -24,17 +24,14 @@ func NewStore(opts StoreOpts) *Store {
 }
 
 func (s *Store) Has(key string) bool {
-	fullPath := s.PathTransform(key).FullPath()
+	fullPath := s.PathTransform(key, s.Root).FullPath()
 
 	_, err := os.Stat(fullPath)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func (s *Store) readStream(key string) (io.ReadCloser, error) {
-	pathkey := s.PathTransform(key)
+	pathkey := s.PathTransform(key, s.Root)
 	return os.Open(pathkey.FullPath())
 }
 
@@ -51,7 +48,7 @@ func (s *Store) Read(key string) (io.Reader, error) {
 }
 
 func (s *Store) writeStream(key string, r io.Reader) error {
-	pathkey := s.PathTransform(key)
+	pathkey := s.PathTransform(key, s.Root)
 	if err := os.MkdirAll(pathkey.PathName, os.ModePerm); err != nil {
 		return err
 	}
@@ -68,7 +65,7 @@ func (s *Store) writeStream(key string, r io.Reader) error {
 }
 
 func (s *Store) Delete(key string) error {
-	pathkey := s.PathTransform(key)
+	pathkey := s.PathTransform(key, s.Root)
 	defer func() {
 		log.Printf("deleted %s from disk", pathkey.PathName)
 	}()
@@ -76,5 +73,5 @@ func (s *Store) Delete(key string) error {
 }
 
 func (s *Store) Clear() error {
-  return os.RemoveAll(s.Root)
+	return os.RemoveAll(s.Root)
 }

@@ -44,38 +44,47 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 	}
 }
 
-type Payload struct {
+type Message struct {
+	From    string
+	Payload any
+}
+
+type DataMessage struct {
 	data []byte
 	key  string
 }
 
-func (s *FileServer) broadcast(p Payload) error {
+func (s *FileServer) broadcast(p *Message) error {
 	peers := []io.Writer{}
 	for _, peer := range s.peers {
 		peers = append(peers, peer)
 	}
 
-	mw := io.MultiWriter()
+	mw := io.MultiWriter(peers...)
 	return gob.NewEncoder(mw).Encode(p)
 }
 
 func (s *FileServer) StoreData(key string, r io.Reader) error {
-  if err := s.store.writeStream(key, r); err != nil {
-    return err
-  }
-  buf := new(bytes.Buffer)
-  _, err := io.Copy(buf, r)
-  
-  if err != nil {
-    return err
-  }
-  
-  p := Payload{
-    key: key,
-    data: buf.Bytes(),
-  }
-  fmt.Println(buf.Bytes())
-	return s.broadcast(p)
+	buf := new(bytes.Buffer)
+	tee := io.TeeReader(r, buf)
+	if err := s.store.writeStream(key, tee); err != nil {
+		return err
+	}
+	_, err := io.Copy(buf, r)
+
+	if err != nil {
+		return err
+	}
+
+	p := &DataMessage{
+		key:  key,
+		data: buf.Bytes(),
+	}
+	fmt.Println(buf.Bytes())
+	return s.broadcast(&Message{
+		From:    "todo",
+		Payload: p,
+	})
 }
 
 func (s *FileServer) Stop() {
@@ -86,7 +95,6 @@ func (s *FileServer) OnPeer(peer p2p.Peer) error {
 	s.peerLock.Lock()
 	defer s.peerLock.Unlock()
 	s.peers[peer.RemoteAddr().String()] = peer
-	log.Printf("connected with remote %s", peer.RemoteAddr())
 	return nil
 }
 
@@ -111,11 +119,26 @@ func (s *FileServer) loop() {
 		select {
 		case msg := <-s.Transport.Consume():
 			// handling message from incoming connections
-			fmt.Println(msg)
+			var m Message
+			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&m); err != nil {
+				log.Fatal(err)
+			}
+
+			if err := s.handleMessage(&m); err != nil {
+				log.Println(err)
+			}
 		case <-s.quitCh:
 			return
 		}
 	}
+}
+
+func (s *FileServer) handleMessage(msg *Message) error {
+  switch v := msg.Payload.(type) {
+    case *DataMessage:
+      fmt.Printf("Data recieved %v\n", v)
+  }
+	return nil
 }
 
 func (s *FileServer) Start() error {

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type PathTransformFunc func(string) PathKey
+type PathTransformFunc func(string, string) PathKey
 
 type PathKey struct {
 	PathName string
@@ -22,7 +22,7 @@ func DefaultPathTransformFunc(key string) string {
 	return key
 }
 
-func CASPathTransfomrFunc(key string) PathKey {
+func CASPathTransfomrFunc(key string, root string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashStr := hex.EncodeToString(hash[:])
 
@@ -36,7 +36,7 @@ func CASPathTransfomrFunc(key string) PathKey {
 	}
 
 	return PathKey{
-		PathName: strings.Join(paths, "/"),
+		PathName: fmt.Sprintf("%s/%s", root, strings.Join(paths, "/")),
 		FileName: hashStr,
 	}
 }
