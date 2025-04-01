@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -32,18 +34,33 @@ func makeServer(addr string, nodes ...string) *FileServer {
 
 func main() {
 	server1 := makeServer(":3000")
-	server2 := makeServer(":4000", ":3000")
+	server3 := makeServer(":5001")
+	server2 := makeServer(":4000", ":3000", ":5001")
 
 	go func() {
 		log.Fatal(server1.Start())
 	}()
 
-	go server2.Start()
+	go func() {
+		log.Fatal(server3.Start())
+	}()
+
+	time.Sleep(time.Second * 3)
+
+	go func() {
+		log.Fatal(server2.Start())
+	}()
 
 	time.Sleep(time.Second * 2)
 
-	data := bytes.NewReader([]byte("this is a test data"))
-	server2.StoreData("file1", data)
+	data := bytes.NewReader([]byte("this is a confidential data"))
+	server2.StoreData("testfile", data)
+
+	time.Sleep(time.Second * 2)
+
+	r, _ := server3.store.Read("testfile")
+	b, _ := io.ReadAll(r)
+	fmt.Println(string(b))
 
 	select {}
 }

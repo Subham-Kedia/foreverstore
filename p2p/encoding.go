@@ -18,7 +18,7 @@ func (dec GOBDecoder) Decode(r io.Reader, rpc *RPC) error {
 }
 
 func (dec NOPDecoder) Decode(r io.Reader, rpc *RPC) error {
-	buf := make([]byte, 1024)
+	buf := make([]byte, 4096)
 	n, err := r.Read(buf)
 	if err != nil {
 		return err

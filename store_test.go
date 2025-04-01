@@ -11,11 +11,11 @@ func TestPathTrasnformFunc(t *testing.T) {
 	key1 := "ab"
 	key2 := "abc"
 	key3 := "abcd"
-	pathname1 := CASPathTransfomrFunc(key1)
+	pathname1 := CASPathTransfomrFunc(key1, "root")
 	fmt.Println(pathname1)
-	pathname2 := CASPathTransfomrFunc(key2)
+	pathname2 := CASPathTransfomrFunc(key2, "root")
 	fmt.Println(pathname2)
-	pathname3 := CASPathTransfomrFunc(key3)
+	pathname3 := CASPathTransfomrFunc(key3, "root")
 	fmt.Println(pathname3)
 }
 

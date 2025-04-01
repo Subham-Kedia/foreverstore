@@ -8,6 +8,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/Subham-Kedia/foreverstore/message"
 	"github.com/Subham-Kedia/foreverstore/p2p"
 )
 
@@ -31,6 +32,9 @@ type FileServer struct {
 }
 
 func NewFileServer(opts FileServerOpts) *FileServer {
+	// Register DataMessage type with gob
+	gob.Register(&message.DataMessage{})
+
 	storeOpts := StoreOpts{
 		Root:          opts.StorageRoot,
 		PathTransform: opts.PathTransformFunc,
@@ -44,24 +48,16 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 	}
 }
 
-type Message struct {
-	From    string
-	Payload any
-}
-
-type DataMessage struct {
-	data []byte
-	key  string
-}
-
-func (s *FileServer) broadcast(p *Message) error {
-	peers := []io.Writer{}
+func (s *FileServer) broadcast(p *message.Message) error {
 	for _, peer := range s.peers {
-		peers = append(peers, peer)
+		if peer.IsOutbound() {
+			if err := gob.NewEncoder(peer).Encode(p); err != nil {
+				fmt.Println("Error encoding message:", err)
+				return err
+			}
+		}
 	}
-
-	mw := io.MultiWriter(peers...)
-	return gob.NewEncoder(mw).Encode(p)
+	return nil
 }
 
 func (s *FileServer) StoreData(key string, r io.Reader) error {
@@ -76,12 +72,12 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 		return err
 	}
 
-	p := &DataMessage{
-		key:  key,
-		data: buf.Bytes(),
+	p := &message.DataMessage{
+		Key:  key,
+		Data: buf.Bytes(),
 	}
 	fmt.Println(buf.Bytes())
-	return s.broadcast(&Message{
+	return s.broadcast(&message.Message{
 		From:    "todo",
 		Payload: p,
 	})
@@ -98,6 +94,7 @@ func (s *FileServer) OnPeer(peer p2p.Peer) error {
 	return nil
 }
 
+// bootstrap the network by dialing the bootstrap nodes
 func (s *FileServer) bootstrapNetwork() error {
 	for _, addr := range s.bootstrapNodes {
 		go func(addr string) {
@@ -110,6 +107,7 @@ func (s *FileServer) bootstrapNetwork() error {
 	return nil
 }
 
+// consume messages from the transport
 func (s *FileServer) loop() {
 	defer func() {
 		fmt.Println("file server stopped due to user quit action")
@@ -118,13 +116,17 @@ func (s *FileServer) loop() {
 	for {
 		select {
 		case msg := <-s.Transport.Consume():
-			// handling message from incoming connections
-			var m Message
-			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&m); err != nil {
-				log.Fatal(err)
-			}
-
-			if err := s.handleMessage(&m); err != nil {
+			fmt.Printf("Recieved message from %v\n", msg.Payload)
+			// var m message.Message
+			// if len(msg.Payload) == 0 {
+			// 	log.Println("Error decoding message: empty payload")
+			// 	continue
+			// }
+			// if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&m); err != nil {
+			// 	log.Println("Error decoding message:", err)
+			// 	continue
+			// }
+			if err := s.handleMessage(&msg); err != nil {
 				log.Println(err)
 			}
 		case <-s.quitCh:
@@ -133,11 +135,16 @@ func (s *FileServer) loop() {
 	}
 }
 
-func (s *FileServer) handleMessage(msg *Message) error {
-  switch v := msg.Payload.(type) {
-    case *DataMessage:
-      fmt.Printf("Data recieved %v\n", v)
-  }
+func (s *FileServer) handleMessage(m *message.Message) error {
+	switch v := m.Payload.(type) {
+	case *message.DataMessage:
+		fmt.Printf("Data recieved %v\n", v)
+		data, ok := m.Payload.(*message.DataMessage)
+		if !ok {
+			return fmt.Errorf("invalid payload type: %T", m.Payload)
+		}
+		return s.StoreData(data.Key, bytes.NewReader(data.Data))
+	}
 	return nil
 }
 
