@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -60,7 +59,7 @@ func (s *Store) writeStream(key string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("wrote %d bytes\n", n)
+	log.Printf("wrote %d bytes\n", n)
 	return nil
 }
 

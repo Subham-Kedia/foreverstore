@@ -32,7 +32,6 @@ type FileServer struct {
 }
 
 func NewFileServer(opts FileServerOpts) *FileServer {
-	// Register DataMessage type with gob
 	gob.Register(&message.DataMessage{})
 
 	storeOpts := StoreOpts{
@@ -52,7 +51,7 @@ func (s *FileServer) broadcast(p *message.Message) error {
 	for _, peer := range s.peers {
 		if peer.IsOutbound() {
 			if err := gob.NewEncoder(peer).Encode(p); err != nil {
-				fmt.Println("Error encoding message:", err)
+				log.Printf("Encoding Error: %v\n", err)
 				return err
 			}
 		}
@@ -116,16 +115,6 @@ func (s *FileServer) loop() {
 	for {
 		select {
 		case msg := <-s.Transport.Consume():
-			fmt.Printf("Recieved message from %v\n", msg.Payload)
-			// var m message.Message
-			// if len(msg.Payload) == 0 {
-			// 	log.Println("Error decoding message: empty payload")
-			// 	continue
-			// }
-			// if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&m); err != nil {
-			// 	log.Println("Error decoding message:", err)
-			// 	continue
-			// }
 			if err := s.handleMessage(&msg); err != nil {
 				log.Println(err)
 			}
@@ -136,9 +125,8 @@ func (s *FileServer) loop() {
 }
 
 func (s *FileServer) handleMessage(m *message.Message) error {
-	switch v := m.Payload.(type) {
+	switch m.Payload.(type) {
 	case *message.DataMessage:
-		fmt.Printf("Data recieved %v\n", v)
 		data, ok := m.Payload.(*message.DataMessage)
 		if !ok {
 			return fmt.Errorf("invalid payload type: %T", m.Payload)

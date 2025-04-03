@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"time"
 
@@ -51,12 +52,12 @@ func main() {
 
 	time.Sleep(time.Second * 2)
 
-	data1 := bytes.NewReader([]byte("this is a confidential data"))
-	data2 := bytes.NewReader([]byte("this is a confidential data 2"))
-	data3 := bytes.NewReader([]byte("this is a confidential data 3"))
-	server2.StoreData("testfile1", data1)
-	server2.StoreData("testfile2", data2)
-	server2.StoreData("testfile3", data3)
+	for i := range 10 {
+		key := fmt.Sprintf("testfile-%d", i)
+		info := fmt.Sprintf("this is a some important information %d", i)
+		data := bytes.NewReader([]byte(info))
+		server2.StoreData(key, data)
+	}
 
 	select {}
 }
