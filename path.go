@@ -7,19 +7,15 @@ import (
 	"strings"
 )
 
-type PathTransformFunc func(string, string) PathKey
-
 type PathKey struct {
 	PathName string
 	FileName string
 }
 
+type TransformPathFunc func(string, string) PathKey
+
 func (p PathKey) FullPath() string {
 	return fmt.Sprintf("%s/%s", p.PathName, p.FileName)
-}
-
-func DefaultPathTransformFunc(key string) string {
-	return key
 }
 
 func CASPathTransfomrFunc(key string, root string) PathKey {

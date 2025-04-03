@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
-	"io"
 	"log"
 	"time"
 
@@ -53,14 +51,12 @@ func main() {
 
 	time.Sleep(time.Second * 2)
 
-	data := bytes.NewReader([]byte("this is a confidential data"))
-	server2.StoreData("testfile", data)
-
-	time.Sleep(time.Second * 2)
-
-	r, _ := server3.store.Read("testfile")
-	b, _ := io.ReadAll(r)
-	fmt.Println(string(b))
+	data1 := bytes.NewReader([]byte("this is a confidential data"))
+	data2 := bytes.NewReader([]byte("this is a confidential data 2"))
+	data3 := bytes.NewReader([]byte("this is a confidential data 3"))
+	server2.StoreData("testfile1", data1)
+	server2.StoreData("testfile2", data2)
+	server2.StoreData("testfile3", data3)
 
 	select {}
 }

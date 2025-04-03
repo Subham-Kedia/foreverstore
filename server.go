@@ -15,7 +15,7 @@ import (
 type FileServerOpts struct {
 	ListenAddr        string
 	StorageRoot       string
-	PathTransformFunc PathTransformFunc
+	PathTransformFunc TransformPathFunc
 	Transport         p2p.Transport
 	TCPTransportOpts  p2p.TCPTransportOpts
 
@@ -37,7 +37,7 @@ func NewFileServer(opts FileServerOpts) *FileServer {
 
 	storeOpts := StoreOpts{
 		Root:          opts.StorageRoot,
-		PathTransform: opts.PathTransformFunc,
+		TransformPath: opts.PathTransformFunc,
 	}
 
 	return &FileServer{
